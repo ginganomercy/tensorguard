@@ -1,6 +1,8 @@
 import re
+import functools
 from typing import List, Union
 
+@functools.lru_cache(maxsize=256)
 def parse_shape_string(shape_str: str) -> List[Union[str, int]]:
     """
     Parses a declarative shape string into a list of semantic tokens.
