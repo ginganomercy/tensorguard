@@ -1,11 +1,11 @@
 import functools
 import inspect
 import os
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Union, Tuple, List
 from tensorguard.core.engine import ShapeEngine
 
 def validate(
-    returns: Optional[str] = None, 
+    returns: Optional[Union[str, Tuple[str, ...], List[str], Dict[str, str]]] = None, 
     dtypes: Optional[Dict[str, str]] = None,
     **shape_kwargs
 ) -> Callable:
@@ -70,7 +70,24 @@ def validate(
             
             # 3. Validate return value
             if returns is not None:
-                check_tensor("return_value", result, returns)
+                if isinstance(returns, str):
+                    check_tensor("return_value", result, returns)
+                elif isinstance(returns, (tuple, list)):
+                    if not isinstance(result, (tuple, list)):
+                        raise TypeError(f"TensorFlow Validator: Expected return value to be a Tuple/List, got {type(result).__name__}.")
+                    if len(result) != len(returns):
+                        raise ValueError(f"TensorFlow Validator: Expected {len(returns)} return items, got {len(result)}.")
+                    for i, (res_tensor, expected_shape) in enumerate(zip(result, returns)):
+                        check_tensor(f"return_value[{i}]", res_tensor, expected_shape)
+                elif isinstance(returns, dict):
+                    if not isinstance(result, dict):
+                        raise TypeError(f"TensorFlow Validator: Expected return value to be a Dictionary, got {type(result).__name__}.")
+                    for key, expected_shape in returns.items():
+                        if key not in result:
+                            raise KeyError(f"TensorFlow Validator: Expected key '{key}' not found in returned Dictionary.")
+                        check_tensor(f"return_value['{key}']", result[key], expected_shape)
+                else:
+                    raise TypeError("TensorFlow Validator: Invalid 'returns' argument type. Must be str, tuple, list, or dict.")
                 
             return result
             

@@ -69,3 +69,27 @@ def test_tensorflow_dtype_mismatch():
             
     with pytest.raises(TypeError, match="DType mismatch for 'images'"):
         process_data(MockIntTensor())
+
+def test_tensorflow_tuple_returns():
+    @validate(x="b c", returns=("b c", "b 10"))
+    def complex_func(x):
+        # We need MockTensor which takes a shape_list
+        # x is MockTensor, so we use its internal _shape from MockTensorShape
+        return x, MockTensor([x.shape.as_list()[0], 10])
+    complex_func(MockTensor([32, 3]))
+    with pytest.raises(ShapeMismatchError):
+        @validate(x="b c", returns=("b c", "b 5"))
+        def bad_func(x):
+            return x, MockTensor([x.shape.as_list()[0], 10])
+        bad_func(MockTensor([32, 3]))
+
+def test_tensorflow_dict_returns():
+    @validate(x="b c", returns={"loss": "1", "logits": "b 10"})
+    def dict_func(x):
+        return {"loss": MockTensor([1]), "logits": MockTensor([x.shape.as_list()[0], 10]), "extra": MockTensor([5])}
+    dict_func(MockTensor([32, 3]))
+    with pytest.raises(ShapeMismatchError):
+        @validate(x="b c", returns={"loss": "2"})
+        def bad_dict(x):
+            return {"loss": MockTensor([1])}
+        bad_dict(MockTensor([32, 3]))

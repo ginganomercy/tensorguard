@@ -1,11 +1,11 @@
 import functools
 import inspect
 import os
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, Optional, Union, Tuple, List
 from tensorguard.core.engine import ShapeEngine
 
 def validate(
-    returns: Optional[str] = None, 
+    returns: Optional[Union[str, Tuple[str, ...], List[str], Dict[str, str]]] = None, 
     strict_device: bool = True, 
     dtypes: Optional[Dict[str, str]] = None,
     **shape_kwargs
@@ -70,9 +70,31 @@ def validate(
             
             # 3. Validate return value
             if returns is not None:
-                if not isinstance(result, torch.Tensor):
-                    raise TypeError("PyTorch Validator: Return value must be a torch.Tensor.")
-                engine.match_shape("return_value", tuple(result.shape), returns)
+                if isinstance(returns, str):
+                    if not isinstance(result, torch.Tensor):
+                        raise TypeError("PyTorch Validator: Expected return value to be a single torch.Tensor.")
+                    engine.match_shape("return_value", tuple(result.shape), returns)
+                elif isinstance(returns, (tuple, list)):
+                    if not isinstance(result, (tuple, list)):
+                        raise TypeError(f"PyTorch Validator: Expected return value to be a Tuple/List, got {type(result).__name__}.")
+                    if len(result) != len(returns):
+                        raise ValueError(f"PyTorch Validator: Expected {len(returns)} return items, got {len(result)}.")
+                    for i, (res_tensor, expected_shape) in enumerate(zip(result, returns)):
+                        if not isinstance(res_tensor, torch.Tensor):
+                            raise TypeError(f"PyTorch Validator: Return item at index {i} is not a torch.Tensor.")
+                        engine.match_shape(f"return_value[{i}]", tuple(res_tensor.shape), expected_shape)
+                elif isinstance(returns, dict):
+                    if not isinstance(result, dict):
+                        raise TypeError(f"PyTorch Validator: Expected return value to be a Dictionary, got {type(result).__name__}.")
+                    for key, expected_shape in returns.items():
+                        if key not in result:
+                            raise KeyError(f"PyTorch Validator: Expected key '{key}' not found in returned Dictionary.")
+                        res_tensor = result[key]
+                        if not isinstance(res_tensor, torch.Tensor):
+                            raise TypeError(f"PyTorch Validator: Return item for key '{key}' is not a torch.Tensor.")
+                        engine.match_shape(f"return_value['{key}']", tuple(res_tensor.shape), expected_shape)
+                else:
+                    raise TypeError(f"PyTorch Validator: Invalid 'returns' argument type. Must be str, tuple, list, or dict.")
                 
             return result
             

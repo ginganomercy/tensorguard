@@ -64,3 +64,25 @@ def test_numpy_validator_production_bypass():
     
     # Clean up
     del os.environ["TENSORGUARD_ENV"]
+
+def test_numpy_tuple_returns():
+    @validate(x="b c", returns=("b c", "b 10"))
+    def complex_func(x):
+        return x, np.zeros((x.shape[0], 10))
+    complex_func(np.zeros((32, 3)))
+    with pytest.raises(ShapeMismatchError):
+        @validate(x="b c", returns=("b c", "b 5"))
+        def bad_func(x):
+            return x, np.zeros((x.shape[0], 10))
+        bad_func(np.zeros((32, 3)))
+
+def test_numpy_dict_returns():
+    @validate(x="b c", returns={"loss": "1", "logits": "b 10"})
+    def dict_func(x):
+        return {"loss": np.zeros(1), "logits": np.zeros((x.shape[0], 10)), "extra": np.zeros(5)}
+    dict_func(np.zeros((32, 3)))
+    with pytest.raises(ShapeMismatchError):
+        @validate(x="b c", returns={"loss": "2"})
+        def bad_dict(x):
+            return {"loss": np.zeros(1)}
+        bad_dict(np.zeros((32, 3)))

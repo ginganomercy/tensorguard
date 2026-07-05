@@ -77,3 +77,25 @@ def test_pytorch_class_method():
     # Should work perfectly handling 'self'
     out = model.forward(img)
     assert out.shape == (32, 10)
+
+def test_pytorch_tuple_returns():
+    @validate(x="b c", returns=("b c", "b 10"))
+    def complex_func(x):
+        return x, MockTensor((x.shape[0], 10))
+    complex_func(MockTensor((32, 3)))
+    with pytest.raises(ShapeMismatchError):
+        @validate(x="b c", returns=("b c", "b 5"))
+        def bad_func(x):
+            return x, MockTensor((x.shape[0], 10))
+        bad_func(MockTensor((32, 3)))
+
+def test_pytorch_dict_returns():
+    @validate(x="b c", returns={"loss": "1", "logits": "b 10"})
+    def dict_func(x):
+        return {"loss": MockTensor((1,)), "logits": MockTensor((x.shape[0], 10)), "extra": MockTensor((5,))}
+    dict_func(MockTensor((32, 3)))
+    with pytest.raises(ShapeMismatchError):
+        @validate(x="b c", returns={"loss": "2"})
+        def bad_dict(x):
+            return {"loss": MockTensor((1,))}
+        bad_dict(MockTensor((32, 3)))
