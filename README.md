@@ -38,7 +38,7 @@ Standard validation using `assert x.shape == (batch, channels, h, w)` has major 
 
 Install TensorGuard via pip:
 ```bash
-pip install tensorguard
+pip install tensor-shape-guard
 ```
 
 ---
