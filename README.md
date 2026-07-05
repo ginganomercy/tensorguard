@@ -89,6 +89,31 @@ def model_step(images):
 
 ---
 
+## Complex Return Validation (Tuple & Dict) [New in v0.2.0]
+
+TensorGuard natively understands complex data structures like `Tuple` and `Dict`, which are heavily used in modern architectures like HuggingFace Transformers or GANs. The syntax perfectly mirrors the Python data structures you already use, making it incredibly intuitive and human-readable compared to manual `assert` statements.
+
+**Tuple Validation:**
+```python
+@validate(images="b c h w", returns=("b c h w", "b 10"))
+def forward(images):
+    # Returns a tuple of (reconstructed_image, logits)
+    return torch.zeros_like(images), torch.zeros(images.shape[0], 10)
+```
+
+**Dictionary Validation (Partial Matching):**
+```python
+@validate(input_ids="b seq", returns={"loss": "1", "hidden_states": "b seq 768"})
+def forward(input_ids):
+    return {
+        "loss": torch.tensor(0.5),
+        "hidden_states": torch.randn(input_ids.shape[0], input_ids.shape[1], 768),
+        "attentions": torch.randn(4, 4) # Ignored by TensorGuard (Flexible Partial Validation)
+    }
+```
+
+---
+
 ## How to Bypass in Production
 TensorGuard is built for zero-compromise performance. Once you are confident your shapes are correct and you are deploying to an edge device or high-traffic API, simply set the environment variable:
 
